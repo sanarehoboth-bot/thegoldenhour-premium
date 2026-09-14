@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Golden Hour ⏳</title>
+<style>
+  :root{
+    --ink-bg: #14091f;
+    --ink-panel: #221231;
+    --ink-line: #3d2456;
+    --star-bright: #ff3ea5;
+    --text-on-ink: #f5eefc;
+    --text-on-ink-dim: #b6a2d6;
+
+    --paper: #f2ecff;
+    --paper-panel: #ffffff;
+    --paper-line: #ded0fb;
+    --ink-text: #241536;
+    --ink-text-dim: #7a6a99;
+    --life-accent: #7c3aed;
+    --life-accent-soft: #e9dcff;
+
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:var(--sans);
+    background:var(--paper);
+    color:var(--ink-text);
+    font-style:italic;
+  }
+  input, select, textarea, button{ font-style:normal; }
+
+  /* ---------- SKY (countdown) ---------- */
+  .sky{ background:linear-gradient(160deg, #1c0b30, #14091f 60%); color:var(--text-on-ink); padding:18px 16px 20px; }
+  .sky-inner{ max-width:720px; margin:0 auto; }
+  .sky h1{ font-family:var(--serif); font-size:20px; font-weight:500; margin:0 0 2px; }
+  .sky .people-count{ font-size:12px; color:var(--star-bright); margin:0 0 10px; }
+  .sky p.note{
+    font-size:12.5px; color:var(--text-on-ink-dim); line-height:1.5;
+    margin:0 0 14px; max-width:56ch;
+  }
+  .horizon-row{
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    margin-bottom:14px; font-size:12.5px; color:var(--text-on-ink-dim);
+  }
+  .horizon-row input[type=date]{
+    background:var(--ink-panel); border:1px solid var(--ink-line); color:var(--text-on-ink);
+    border-radius:6px; padding:6px 8px; font-family:var(--sans); font-size:13px;
+  }
+  .stat-row{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:1px;
+    background:var(--ink-line); border-radius:8px; overflow:hidden;
+  }
+  .stat{ background:var(--ink-panel); padding:12px 8px; text-align:center; }
+  .stat .num{ font-family:var(--serif); font-size:24px; display:block; line-height:1; }
+  .stat .lbl{ font-size:10.5px; color:var(--text-on-ink-dim); margin-top:4px; display:block; }
+  .stat.remaining .num{ color:var(--star-bright); }
+
+  .archive-title{ font-size:11px; color:var(--text-on-ink-dim); margin:14px 0 6px; }
+  .archive-list{ display:flex; flex-direction:column; gap:0; max-height:110px; overflow-y:auto; }
+  .archive-row{
+    display:flex; justify-content:space-between; gap:10px;
+    font-size:11.5px; color:var(--text-on-ink-dim);
+    padding:5px 0; border-bottom:1px solid var(--ink-line);
+  }
+  .archive-row:last-child{ border-bottom:none; }
+  .archive-row span.wk{ color:var(--text-on-ink); }
+
+  /* ---------- PEOPLE / WEEKS ---------- */
+  .wrap{ max-width:720px; margin:0 auto; padding:14px 14px 24px; }
+  .anchor-title{
+    font-family:var(--serif); font-size:19px; font-weight:500;
+    margin:4px 0 12px; color:var(--ink-text);
+  }
+  @media (max-width:340px){
+    .anchor-title .anchor-text{ display:none; }
+  }
+
+  .brand-footer{
+    text-align:center;
+    font-family:var(--serif);
+    font-size:11px;
+    color:var(--ink-text-dim);
+    letter-spacing:0.5px;
+    border-top:1px solid var(--paper-line);
+    padding-top:14px;
+    margin-top:8px;
+  }
+
+  .roster{ display:flex; flex-direction:column; gap:5px; margin-bottom:14px; }
+  .roster-row{
+    display:flex; align-items:center; gap:6px;
+  }
+  .roster-row input{
+    width:140px;
+    flex:none;
+    font-family:var(--serif); font-size:13px;
+    border:1px solid var(--paper-line); border-radius:6px;
+    padding:6px 8px; background:var(--paper-panel); color:var(--ink-text);
+  }
+  .roster-row .move-btn{
+    background:var(--paper-panel);
+    color:var(--ink-text);
+    border:1px solid var(--paper-line);
+    border-radius:5px;
+    padding:5px 8px;
+    font-size:12px;
+    line-height:1;
+    cursor:pointer;
+  }
+  .roster-row .move-btn:disabled{ opacity:0.3; cursor:default; }
+  .roster-row.moved-flash{ animation: flashRow 0.6s ease; }
+  @keyframes flashRow{
+    0%{ background:var(--life-accent-soft); }
+    100%{ background:transparent; }
+  }
+
+  .settings-section{
+    border-top:1px solid var(--paper-line);
+    margin-top:20px;
+    padding-top:16px;
+  }
+  .settings-label{
+    font-size:11px;
+    color:var(--ink-text-dim);
+    margin-bottom:10px;
+    letter-spacing:0.3px;
+  }
+
+  .add-option-row{ display:flex; gap:8px; margin-bottom:18px; }
+  .add-option-row input{
+    width:100%; max-width:220px; flex:none;
+    font-family:var(--sans); font-size:13px;
+    border:1px solid var(--paper-line); border-radius:6px;
+    padding:8px 10px; background:#fff; color:var(--ink-text);
+  }
+  .add-option-row button{ flex-shrink:0; }
+
+  .tech-actions{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .tech-btn{
+    font-family:"SF Mono","Courier New",monospace;
+    font-size:12px;
+    letter-spacing:0.3px;
+    background:var(--ink-bg);
+    color:var(--star-bright);
+    border:1px solid var(--life-accent);
+    border-radius:6px;
+    padding:8px 12px;
+  }
+
+  .week-block{
+    border:1px solid var(--paper-line);
+    border-radius:10px;
+    overflow:hidden;
+    margin-bottom:16px;
+  }
+  .week-block .week-title{
+    font-family:var(--serif); font-size:13px; font-weight:500;
+    background:var(--life-accent-soft); color:var(--ink-text);
+    padding:8px 12px;
+  }
+  table.weekgrid{ border-collapse:collapse; width:100%; table-layout:fixed; background:var(--paper-panel); }
+  table.weekgrid th, table.weekgrid td{
+    border-top:1px solid var(--paper-line);
+    border-left:1px solid var(--paper-line);
+    padding:5px 2px;
+    text-align:center;
+  }
+  table.weekgrid th:first-child, table.weekgrid td:first-child{ border-left:none; }
+  table.weekgrid th{
+    font-size:10px; color:var(--ink-text-dim); font-weight:500;
+    font-family:var(--sans); padding:4px 2px;
+  }
+  table.weekgrid td:first-child{
+    text-align:left; font-family:var(--serif); font-size:12.5px;
+    color:var(--ink-text); padding:5px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  table.weekgrid select{
+    width:100%;
+    font-family:var(--sans);
+    font-size:9.5px;
+    border:1px solid var(--paper-line);
+    border-radius:3px;
+    padding:3px 0px;
+    background:#fff;
+    color:var(--ink-text);
+  }
+
+  .actions{ display:flex; justify-content:space-between; align-items:center; padding-top:4px; }
+  button{
+    font-family:var(--sans); font-size:13px; border:none; border-radius:7px;
+    padding:9px 14px; cursor:pointer; background:var(--life-accent); color:#fff;
+  }
+  .toast{ font-size:12px; color:var(--life-accent); }
+
+  /* ---------- PIN GATE ---------- */
+  .pin-gate{
+    position:fixed; inset:0;
+    background:linear-gradient(160deg, #1c0b30, #14091f 60%);
+    display:flex; align-items:center; justify-content:center;
+    z-index:100; padding:20px;
+  }
+  .pin-card{
+    background:var(--ink-panel);
+    border:1px solid var(--ink-line);
+    border-radius:14px;
+    padding:28px 24px;
+    max-width:280px;
+    width:100%;
+    text-align:center;
+  }
+  .pin-card .pin-icon{ font-size:30px; margin-bottom:10px; }
+  .pin-card h2{
+    font-family:var(--serif); font-weight:500; font-size:18px;
+    color:var(--text-on-ink); margin:0 0 14px; font-style:italic;
+  }
+  .pin-card input{
+    width:100%;
+    text-align:center;
+    letter-spacing:10px;
+    font-size:22px;
+    padding:10px;
+    border-radius:8px;
+    border:1px solid var(--ink-line);
+    background:var(--ink-bg);
+    color:var(--text-on-ink);
+    margin-bottom:12px;
+  }
+  .pin-card button{ width:100%; background:var(--life-accent); }
+  .pin-error{ color:var(--star-bright); font-size:12px; margin-top:10px; min-height:14px; }
+  .app-hidden{ display:none; }
+</style>
+</head>
+<body>
+
+<div class="pin-gate" id="pinGate">
+  <div class="pin-card">
+    <div class="pin-icon">✨</div>
+    <h2>The Golden Hour Premium ✓</h2>
+    <p style="color:var(--ink-text-dim); font-size:12px; margin:8px 0 14px;">Enter your access password</p>
+    <input type="password" id="pinInput" placeholder="Enter password" style="font-size:14px;">
+    <button id="pinBtn">Unlock Premium Access</button>
+    <div class="pin-error" id="pinError"></div>
+  </div>
+</div>
+
+<div id="appContent" class="app-hidden">
+<div class="sky">
+  <div class="sky-inner">
+    <h1>The Golden Hour ⏳</h1>
+    <p class="people-count" id="peopleCountLine"></p>
+    <p class="note">This isn't a forecast of how long you'll live — it's a planning horizon, set here at 20 years, made visible one week at a time. Move the date below if you want to count from somewhere other than today.</p>
+    <div class="horizon-row">
+      <label for="startDate">Counting from</label>
+      <input type="date" id="startDate">
+      <span id="horizonSpan"></span>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><span class="num" id="statWeeksElapsed">–</span><span class="lbl">weeks lived</span></div>
+      <div class="stat remaining"><span class="num" id="statWeeksLeft">–</span><span class="lbl">weeks remaining</span></div>
+      <div class="stat"><span class="num" id="statPercent">–</span><span class="lbl">of horizon spent</span></div>
+    </div>
+    <div class="archive-title" id="archiveTitle" style="display:none;">Archived at each week</div>
+    <div class="archive-list" id="archiveList"></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <h2 class="anchor-title"><span class="anchor-text">My Life's Anchor</span> ⚓</h2>
+
+  <div id="weekBlocks"></div>
+
+  <div class="settings-section">
+    <div class="settings-label">Manage anchors &amp; options</div>
+    <div class="roster" id="rosterRow"></div>
+
+    <div class="add-option-row">
+      <input type="text" id="newPersonInput" placeholder="Add an anchor, e.g. Mom">
+      <button id="addPersonBtn" class="tech-btn">+ Anchor</button>
+    </div>
+
+    <div class="add-option-row">
+      <input type="text" id="newTagInput" placeholder="Add a tap-word, e.g. Yoga">
+      <button id="addTagBtn" class="tech-btn">+ Option</button>
+    </div>
+
+    <div class="actions">
+      <button id="addWeekBtn" class="tech-btn">+ Week</button>
+      <span class="toast" id="toast"></span>
+    </div>
+  </div>
+
+  <div class="brand-footer">The Golden Hour Premium ✓ | Full access unlocked · Made by Theodor in loving memory</div>
+</div>
+
+<script>
+(function(){
+  const APP_PIN = 'TGH2026A'; // Will be provided after purchase
+  const pinGate = document.getElementById('pinGate');
+  const appContent = document.getElementById('appContent');
+  const pinInput = document.getElementById('pinInput');
+  const pinBtn = document.getElementById('pinBtn');
+  const pinError = document.getElementById('pinError');
+
+  function tryUnlock(){
+    if(pinInput.value === APP_PIN){
+      pinGate.style.display = 'none';
+      appContent.classList.remove('app-hidden');
+    } else {
+      pinError.textContent = 'Incorrect PIN. Try again.';
+      pinInput.value = '';
+    }
+  }
+  pinBtn.addEventListener('click', tryUnlock);
+  pinInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); tryUnlock(); } });
+
+  const TOTAL_WEEKS = 1040;
+  const DAY = 86400000;
+  const DAYS_PER_WEEK = 7;
+  const STORE_KEY = 'final-countdown-state';
+
+  const TAG_OPTIONS = ['', 'Chat','Call','Video call','Cafe','Drive','Ride','Study',
+    'Movie','Shopping','Dining','Outdoor','Home','Talk','Fwd','Recipe','Bible','Game','Fit','Other'];
+
+  const defaultState = () => ({
+    startDate: todayISO(),
+    people: ['Myself','Spouse','Kid1','Kid2','Sis1','Sis2','Pal1','Pal2'],
+    peopleLog: {},
+    weekCounter: 1,
+    customTags: [],
+    countdownArchive: []
+  });
+
+  let state = defaultState();
+
+  function todayISO(){ return new Date().toISOString().slice(0,10); }
+
+  async function storageGet(key){
+    try{
+      if(window.storage){
+        const r = await window.storage.get(key, false);
+        return r ? r.value : null;
+      }
+    }catch(e){}
+    try{ return localStorage.getItem(key); }catch(e){ return null; }
+  }
+  async function storageSet(key, value){
+    try{
+      if(window.storage){
+        await window.storage.set(key, value, false);
+        return true;
+      }
+    }catch(e){}
+    try{ localStorage.setItem(key, value); return true; }catch(e){ return false; }
+  }
+
+  async function loadState(){
+    const raw = await storageGet(STORE_KEY);
+    if(raw){
+      try{
+        const parsed = JSON.parse(raw);
+        state = Object.assign(defaultState(), parsed);
+        if(!state.people || !state.people.length) state.people = defaultState().people;
+        if(!state.weekCounter) state.weekCounter = 1;
+        if(!state.startDate) state.startDate = todayISO();
+        if(!Array.isArray(state.customTags)) state.customTags = [];
+        if(!Array.isArray(state.countdownArchive)) state.countdownArchive = [];
+        Object.keys(state.peopleLog || {}).forEach(pi=>{
+          (state.peopleLog[pi] || []).forEach(entry=>{
+            if(entry.day === undefined) entry.day = 1;
+          });
+        });
+      }catch(e){ state = defaultState(); }
+    }
+    render();
+  }
+
+  let saveTimer = null;
+  function saveState(showToast){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async ()=>{
+      const ok = await storageSet(STORE_KEY, JSON.stringify(state));
+      if(showToast){
+        const t = document.getElementById('toast');
+        t.textContent = ok ? 'Saved.' : 'Saved for this session.';
+        setTimeout(()=>{ t.textContent=''; }, 2000);
+      }
+    }, 200);
+  }
+
+  function escapeHtml(s){
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ---------- SKY ----------
+  function weeksBetween(a,b){ return Math.floor((b - a) / (DAY*7)); }
+
+  function computeCountdown(){
+    const start = new Date(state.startDate + 'T00:00:00');
+    const now = new Date();
+    let elapsed = weeksBetween(start, now);
+    elapsed = Math.max(0, Math.min(TOTAL_WEEKS, elapsed));
+    const remaining = TOTAL_WEEKS - elapsed;
+    const pct = Math.round((elapsed/TOTAL_WEEKS)*100);
+    return { elapsed, remaining, pct };
+  }
+
+  function renderSky(){
+    document.getElementById('startDate').value = state.startDate;
+    const { elapsed, remaining, pct } = computeCountdown();
+
+    document.getElementById('statWeeksElapsed').textContent = elapsed.toLocaleString();
+    document.getElementById('statWeeksLeft').textContent = remaining.toLocaleString();
+    document.getElementById('statPercent').textContent = pct + '%';
+    document.getElementById('horizonSpan').textContent =
+      `20 years · 240 months · ~${TOTAL_WEEKS.toLocaleString()} weeks · ~${(TOTAL_WEEKS*7).toLocaleString()} days`;
+    document.getElementById('peopleCountLine').textContent =
+      `${state.people.length} people you're spending it with`;
+
+    renderArchive();
+  }
+
+  function renderArchive(){
+    const wrap = document.getElementById('archiveList');
+    const title = document.getElementById('archiveTitle');
+    if(!state.countdownArchive.length){
+      title.style.display = 'none';
+      wrap.innerHTML = '';
+      return;
+    }
+    title.style.display = 'block';
+    wrap.innerHTML = state.countdownArchive.slice().reverse().map(a=>{
+      return `<div class="archive-row"><span class="wk">Wk${a.week} · ${a.date}</span><span>${a.remaining.toLocaleString()} left · ${a.pct}%</span></div>`;
+    }).join('');
+  }
+
+  document.getElementById('startDate').addEventListener('change', (e)=>{
+    state.startDate = e.target.value || todayISO();
+    renderSky();
+    saveState(true);
+  });
+
+  // ---------- ROSTER ----------
+  function swapPeople(i, j){
+    const p = state.people;
+    [p[i], p[j]] = [p[j], p[i]];
+    const a = state.peopleLog[i];
+    const b = state.peopleLog[j];
+    if(b) state.peopleLog[i] = b; else delete state.peopleLog[i];
+    if(a) state.peopleLog[j] = a; else delete state.peopleLog[j];
+  }
+
+  function flashRosterRow(index){
+    const rows = document.querySelectorAll('#rosterRow .roster-row');
+    const row = rows[index];
+    if(!row) return;
+    row.classList.remove('moved-flash');
+    void row.offsetWidth;
+    row.classList.add('moved-flash');
+  }
+
+  function renderRoster(){
+    const wrap = document.getElementById('rosterRow');
+    wrap.innerHTML = '';
+    state.people.forEach((name, pi)=>{
+      const row = document.createElement('div');
+      row.className = 'roster-row';
+
+      const up = document.createElement('button');
+      up.className = 'move-btn';
+      up.textContent = '▲';
+      up.disabled = (pi === 0);
+      up.addEventListener('click', ()=>{
+        swapPeople(pi, pi-1);
+        renderRoster(); renderWeekBlocks(); renderSky(); saveState(true);
+        flashRosterRow(pi-1);
+      });
+
+      const down = document.createElement('button');
+      down.className = 'move-btn';
+      down.textContent = '▼';
+      down.disabled = (pi === state.people.length - 1);
+      down.addEventListener('click', ()=>{
+        swapPeople(pi, pi+1);
+        renderRoster(); renderWeekBlocks(); renderSky(); saveState(true);
+        flashRosterRow(pi+1);
+      });
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = name;
+      input.addEventListener('input', (e)=>{
+        state.people[pi] = e.target.value;
+        renderWeekBlocks();
+        renderSky();
+        saveState(true);
+      });
+
+      row.appendChild(input);
+      row.appendChild(up);
+      row.appendChild(down);
+      wrap.appendChild(row);
+    });
+  }
+
+  document.getElementById('addPersonBtn').addEventListener('click', ()=>{
+    const input = document.getElementById('newPersonInput');
+    const val = input.value.trim();
+    if(!val) return;
+    state.people.push(val);
+    input.value = '';
+    renderRoster();
+    renderWeekBlocks();
+    renderSky();
+    saveState(true);
+  });
+  document.getElementById('newPersonInput').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('addPersonBtn').click(); }
+  });
+
+  // ---------- WEEK BLOCKS ----------
+  function getEntry(pi, week, day){
+    const list = state.peopleLog[pi] || [];
+    const found = list.find(e=> e.week === week && e.day === day);
+    return found ? found.tag : '';
+  }
+  function setEntry(pi, week, day, tag){
+    const list = state.peopleLog[pi] || (state.peopleLog[pi] = []);
+    const found = list.find(e=> e.week === week && e.day === day);
+    if(found) found.tag = tag;
+    else list.push({ week, day, tag });
+  }
+
+  function buildWeekTable(w){
+    const allTags = TAG_OPTIONS.concat(state.customTags.filter(t=> !TAG_OPTIONS.includes(t)));
+    const table = document.createElement('table');
+    table.className = 'weekgrid';
+
+    const thead = document.createElement('tr');
+    let headHtml = '<th>⚓</th>';
+    for(let d=1; d<=DAYS_PER_WEEK; d++){ headHtml += `<th>d${d}</th>`; }
+    thead.innerHTML = headHtml;
+    table.appendChild(thead);
+
+    state.people.forEach((name, pi)=>{
+      const tr = document.createElement('tr');
+      const tdName = document.createElement('td');
+      tdName.textContent = name;
+      tr.appendChild(tdName);
+
+      for(let d=1; d<=DAYS_PER_WEEK; d++){
+        const td = document.createElement('td');
+        const select = document.createElement('select');
+        const current = getEntry(pi, w, d);
+        let hasCurrent = false;
+        allTags.forEach(opt=>{
+          const o = document.createElement('option');
+          o.value = opt; o.textContent = opt || '—';
+          if(opt === current){ o.selected = true; hasCurrent = true; }
+          select.appendChild(o);
+        });
+        if(!hasCurrent && current){
+          const o = document.createElement('option');
+          o.value = current; o.textContent = current; o.selected = true;
+          select.appendChild(o);
+        }
+        select.addEventListener('change', (e)=>{
+          setEntry(pi, w, d, e.target.value);
+          saveState(true);
+        });
+        td.appendChild(select);
+        tr.appendChild(td);
+      }
+      table.appendChild(tr);
+    });
+    return table;
+  }
+
+  const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function formatWeekRange(w){
+    const start = new Date(state.startDate + 'T00:00:00');
+    const from = new Date(start.getTime() + (w-1)*7*DAY);
+    const to = new Date(from.getTime() + 6*DAY);
+    const fmt = (d) => `${d.getDate()}.${d.getMonth()+1}.${String(d.getFullYear()).slice(-2)}`;
+    return `${MONTHS_SHORT[from.getMonth()]} · Wk${w} · ${fmt(from)} to ${fmt(to)}`;
+  }
+
+  function renderWeekBlocks(){
+    const wrap = document.getElementById('weekBlocks');
+    wrap.innerHTML = '';
+    for(let w=1; w<=state.weekCounter; w++){
+      const block = document.createElement('div');
+      block.className = 'week-block';
+      block.id = 'week-block-' + w;
+      const title = document.createElement('div');
+      title.className = 'week-title';
+      title.textContent = formatWeekRange(w);
+      block.appendChild(title);
+      block.appendChild(buildWeekTable(w));
+      wrap.appendChild(block);
+    }
+  }
+
+  // ---------- CUSTOM TAGS ----------
+  document.getElementById('addTagBtn').addEventListener('click', ()=>{
+    const input = document.getElementById('newTagInput');
+    const val = input.value.trim();
+    if(!val) return;
+    if(!state.customTags.includes(val) && !TAG_OPTIONS.includes(val)){
+      state.customTags.push(val);
+    }
+    input.value = '';
+    renderWeekBlocks();
+    saveState(true);
+  });
+  document.getElementById('newTagInput').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('addTagBtn').click(); }
+  });
+
+  // ---------- ADD WEEK ----------
+  document.getElementById('addWeekBtn').addEventListener('click', ()=>{
+    const { elapsed, remaining, pct } = computeCountdown();
+    state.countdownArchive.push({ week: state.weekCounter, date: todayISO(), elapsed, remaining, pct });
+    if(state.countdownArchive.length > 104) state.countdownArchive = state.countdownArchive.slice(-104);
+
+    state.weekCounter += 1;
+    renderWeekBlocks();
+    renderArchive();
+    saveState(true);
+
+    const newBlock = document.getElementById('week-block-' + state.weekCounter);
+    if(newBlock) newBlock.scrollIntoView({ behavior:'smooth', block:'start' });
+  });
+
+  function render(){
+    renderSky();
+    renderRoster();
+    renderWeekBlocks();
+  }
+
+  loadState();
+  setInterval(renderSky, 1000*60*60);
+})();
+</script>
+</div>
+</body>
+</html>
