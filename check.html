@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Device check</title>
+<style>
+body{margin:0;background:#f3f0e8;color:#222;font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;padding:16px}
+.w{max-width:640px;margin:0 auto}
+h1{font-size:22px;margin:4px 0 4px}
+.card{background:#fff;border-radius:16px;padding:14px 16px;margin:12px 0;box-shadow:0 1px 6px rgba(0,0,0,.08)}
+.r{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #eee}.r:last-child{border:0}
+.b{flex:0 0 58px;font-weight:700;font-size:12px;padding:3px 0;border-radius:8px;text-align:center;align-self:flex-start}
+.ok{background:#d7f0e3;color:#17633f}.warn{background:#fff3cd;color:#7a5600}.bad{background:#fadbd8;color:#a1241a}.info{background:#e8e8ee;color:#444}
+.t{flex:1;word-break:break-word}.t small{display:block;color:#666}
+button{font-size:16px;padding:12px 16px;border:0;border-radius:10px;background:#1f5c4a;color:#fff;font-weight:600;margin:4px 6px 4px 0}
+textarea{width:100%;box-sizing:border-box;height:120px;font:12px monospace}
+</style></head><body><div class="w">
+<h1>Device check</h1>
+<div>Takes 10 seconds. Open this page on the device you want to test, then send the report to the seller.</div>
+<div class="card" id="rows"></div>
+<div class="card">
+  <b>Offline test</b><br>
+  1. Tap "Save for offline test" while online.<br>
+  2. Turn on Airplane mode.<br>
+  3. Reopen this same page. It should say "Opened offline OK".<br>
+  <button id="bs" type="button">Save for offline test</button>
+  <div id="off" style="margin-top:6px"></div>
+</div>
+<div class="card"><button id="bc" type="button">Copy report</button><button id="br" type="button">Run again</button>
+<textarea id="rep" readonly></textarea></div>
+</div>
+<script>
+(function(){
+  var rows=document.getElementById('rows'), lines=[];
+  function add(level,title,detail){
+    var d=document.createElement('div');d.className='r';
+    var b=document.createElement('div');b.className='b '+level;b.textContent=level.toUpperCase();
+    var t=document.createElement('div');t.className='t';t.textContent=title;
+    if(detail){var s=document.createElement('small');s.textContent=detail;t.appendChild(s);}
+    d.appendChild(b);d.appendChild(t);rows.appendChild(d);
+    lines.push(level.toUpperCase()+' | '+title+(detail?' | '+detail:''));
+  }
+  function ls(){try{localStorage.setItem('wj_c','1');var v=localStorage.getItem('wj_c');localStorage.removeItem('wj_c');return v==='1';}catch(e){return false;}}
+  function run(){
+    rows.innerHTML='';lines=[];
+    var ua=navigator.userAgent, tp=navigator.maxTouchPoints||0;
+    var isIpadOS=/Macintosh/.test(ua)&&tp>1, isIOS=/iPhone|iPad|iPod/.test(ua)||isIpadOS;
+    add('info','Device',(isIpadOS?'iPad (reports itself as a Mac) ':(isIOS?'iPhone/iPad ':''))+ua);
+    add('info','Screen',window.innerWidth+' x '+window.innerHeight+' px, pixel ratio '+(window.devicePixelRatio||1)+', touch points '+tp);
+    var standalone=(window.navigator.standalone===true)||(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches);
+    add(standalone?'warn':'ok',standalone?'Opened from the Home Screen icon':'Opened in the browser',standalone?'Home Screen icons keep their own saved data. Enter the license key again here if asked.':'');
+    add(ls()?'ok':'bad','Saving data on this device',ls()?'Works.':'Blocked. Turn off Private Browsing and allow website data.');
+    var idb=false;try{idb=!!window.indexedDB;}catch(e){}
+    add(idb?'ok':'warn','Database storage',idb?'Available.':'Not available.');
+    var sw=('serviceWorker' in navigator);
+    add(sw?'ok':'warn','Offline support',sw?'Supported.':'Not supported on this browser, so the tool needs internet each time.');
+    if(isIOS)add('warn','Safari clears saved data after about 7 days without use','If the tool asks for your key again, paste it again.');
+    add(navigator.onLine?'ok':'warn','Internet',navigator.onLine?'Online.':'Offline right now.');
+    if(navigator.onLine){
+      var x=new XMLHttpRequest();
+      x.open('GET','/api/verify',true);x.timeout=15000;
+      x.onload=function(){var r=null;try{r=JSON.parse(x.responseText);}catch(e){}
+        if(r&&r.ok){
+          var n=r.products||0;
+          if(n===0&&!r.testMode)add('bad','Key check service','Reachable, but NO product ID is set (or Vercel was not redeployed after you added it).');
+          else add('ok','Key check service','Reachable. Product IDs set: '+n+'. Test mode: '+(r.testMode?'ON':'off')+'.');
+        } else add('bad','Key check service','Not working yet (api/verify.js missing or not deployed). Status '+x.status);
+        finish();};
+      x.onerror=x.ontimeout=function(){add('bad','Key check service','Could not reach /api/verify');finish();};
+      x.send();
+    } else finish();
+    var first=null;try{first=localStorage.getItem('wj_check_saved');}catch(e){}
+    var o=document.getElementById('off');
+    if(first&&!navigator.onLine)o.innerHTML='<b style="color:#17633f">Opened offline OK</b> (saved '+first+')';
+    else if(first)o.textContent='Saved at '+first+'. Now try Airplane mode and reopen.';
+    try{if(sw)navigator.serviceWorker.register('/sw.js');}catch(e){}
+  }
+  function finish(){document.getElementById('rep').value=lines.join('\n');}
+  document.getElementById('bs').onclick=function(){
+    try{localStorage.setItem('wj_check_saved',new Date().toLocaleString());}catch(e){}
+    try{if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js');}catch(e){}
+    run();
+  };
+  document.getElementById('br').onclick=run;
+  document.getElementById('bc').onclick=function(){
+    var t=document.getElementById('rep');t.focus();t.select();
+    try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t.value);return;}}catch(e){}
+    try{document.execCommand('copy');}catch(e){}
+  };
+  run();
+})();
+</script></body></html>

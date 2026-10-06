@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<meta name="robots" content="noindex,nofollow">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Golden Hour ⏳</title>
@@ -236,14 +237,157 @@
 </style>
 </head>
 <body>
+<!-- WJ-GATE:START -->
+<style>
+#wjg{position:fixed;left:0;top:0;right:0;bottom:0;z-index:2147483647;background:#14101c;display:flex;align-items:center;justify-content:center;padding:18px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;overflow:auto;-webkit-overflow-scrolling:touch}
+#wjg .wjc{max-width:380px;width:100%;background:#fff;color:#222;border-radius:16px;padding:26px 22px;text-align:center;box-sizing:border-box}
+#wjg h2{margin:0 0 6px;font-size:22px;color:#222}
+#wjg p{margin:0 0 14px;font-size:14px;line-height:1.45;color:#555}
+#wjg input{width:100%;box-sizing:border-box;font-size:16px;padding:13px 12px;border:2px solid #c9c9d3;border-radius:10px;text-align:center;letter-spacing:.5px;text-transform:uppercase;-webkit-appearance:none}
+#wjg button{width:100%;margin-top:12px;font-size:16px;padding:13px;border:0;border-radius:10px;background:#1f5c4a;color:#fff;font-weight:600;cursor:pointer}
+#wjg button[disabled]{opacity:.6}
+#wjg .wjm{min-height:20px;margin-top:12px;font-size:13px;line-height:1.4}
+#wjg .wjs{margin-top:14px;font-size:12px;color:#777}
+#wjnote{position:fixed;left:0;right:0;top:0;z-index:2147483000;background:#fff3cd;color:#664d03;font:13px/1.4 -apple-system,Arial,sans-serif;padding:8px 12px;text-align:center}
+</style>
+<div id="wjg">
+  <div class="wjc">
+    <h2>The Golden Hour</h2>
+    <p>Enter the license key from your Gumroad receipt to open your tool.</p>
+    <input id="wjgK" type="text" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX">
+    <button id="wjgB" type="button">Unlock</button>
+    <div id="wjgM" class="wjm" role="status" aria-live="polite"></div>
+    <div class="wjs">Can't find your key? Open your Gumroad receipt email and look for "License key". Need help? Reply to that email.</div>
+  </div>
+</div>
+<script>
+(function () {
+  var TOOL = 'goldenhour';
+  var K_KEY = 'wj_key_' + TOOL, K_DEV = 'wj_dev_' + TOOL, K_CHK = 'wj_chk_' + TOOL;
+  var WEEK = 7 * 24 * 3600 * 1000;
+  var gate = document.getElementById('wjg');
+  var inp = document.getElementById('wjgK');
+  var btn = document.getElementById('wjgB');
+  var out = document.getElementById('wjgM');
+
+  function get(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+  function set(k, v) { try { window.localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+  function del(k) { try { window.localStorage.removeItem(k); } catch (e) {} }
+  function storageOK() {
+    try { window.localStorage.setItem('wj_t', '1'); window.localStorage.removeItem('wj_t'); return true; }
+    catch (e) { return false; }
+  }
+  window.wjSafeClear = function () {
+    var keep = {}, names = [K_KEY, K_DEV, K_CHK], i;
+    try {
+      for (i = 0; i < names.length; i++) keep[names[i]] = window.localStorage.getItem(names[i]);
+      window.localStorage.clear();
+      for (i = 0; i < names.length; i++) if (keep[names[i]] !== null) window.localStorage.setItem(names[i], keep[names[i]]);
+    } catch (e) {}
+  };
+  function say(t, bad) { out.style.color = bad ? '#b3261e' : '#1f5c4a'; out.textContent = t; }
+  function rand() {
+    var s = '', a = '0123456789abcdef', i;
+    try { var u = new Uint8Array(16); window.crypto.getRandomValues(u); for (i = 0; i < 16; i++) s += a[u[i] % 16]; return s; } catch (e) {}
+    for (i = 0; i < 16; i++) s += a[Math.floor(Math.random() * 16)];
+    return s;
+  }
+  function ready(fn) {
+    if (document.readyState === 'complete') { setTimeout(fn, 0); }
+    else window.addEventListener('load', function () { setTimeout(fn, 0); });
+  }
+  function onUnlockHook() { try { var g=document.getElementById('pinGate');if(g)g.style.display='none';var a=document.getElementById('appContent');if(a)a.classList.remove('app-hidden'); } catch (e) {} }
+  function unlock(note) {
+    if (gate && gate.parentNode) gate.parentNode.removeChild(gate);
+    ready(function () {
+      onUnlockHook();
+      if (note) {
+        var d = document.createElement('div'); d.id = 'wjnote'; d.textContent = note;
+        d.onclick = function () { d.parentNode.removeChild(d); };
+        document.body.appendChild(d);
+      }
+      try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js'); } catch (e) {}
+    });
+  }
+  function post(key, isNew, dev, cb) {
+    var x = new XMLHttpRequest(), done = false;
+    function fin(r) { if (!done) { done = true; cb(r); } }
+    try {
+      x.open('POST', '/api/verify', true);
+      x.setRequestHeader('Content-Type', 'application/json');
+      x.timeout = 20000;
+      x.onload = function () {
+        var r = null; try { r = JSON.parse(x.responseText); } catch (e) {}
+        fin(r || { ok: false, code: 'upstream' });
+      };
+      x.onerror = function () { fin({ ok: false, code: 'net' }); };
+      x.ontimeout = function () { fin({ ok: false, code: 'net' }); };
+      x.send(JSON.stringify({ key: key, deviceId: dev || null, isNewDevice: !!isNew }));
+    } catch (e) { fin({ ok: false, code: 'net' }); }
+  }
+  var MSG = {
+    invalid: "That key wasn't recognised for this tool. Please copy it again from your receipt.",
+    refunded: 'This purchase was refunded, so the key is no longer active.',
+    limit: 'This key is already used on 3 devices. Reply to your receipt email for help.',
+    net: 'No internet connection. Your first unlock needs internet.',
+    upstream: 'Something went wrong on our side. Please try again in a minute.',
+    config: 'This site is not set up yet. Please tell the seller.',
+    method: 'Something went wrong. Please reload the page.'
+  };
+
+  var stored = get(K_KEY);
+  if (stored) {
+    var last = parseInt(get(K_CHK) || '0', 10) || 0;
+    var offline = (typeof navigator.onLine === 'boolean') && !navigator.onLine;
+    unlock();
+    if (!offline && (Date.now() - last) > WEEK) {
+      post(stored, false, get(K_DEV), function (r) {
+        if (r && r.ok) { set(K_CHK, String(Date.now())); }
+        else if (r && (r.code === 'refunded' || r.code === 'invalid')) { del(K_KEY); window.location.reload(); }
+      });
+    }
+    return;
+  }
+
+  function submit() {
+    var key = (inp.value || '').replace(/\s+/g, '');
+    if (key.length < 10) { say('Please paste your license key.', true); return; }
+    var canStore = storageOK();
+    var dev = get(K_DEV), isNew = false;
+    if (!dev && canStore) { dev = rand(); isNew = true; }
+    btn.disabled = true; say('Checking...', false);
+    post(key, isNew, dev, function (r) {
+      btn.disabled = false;
+      if (r && r.ok) {
+        if (canStore) { if (isNew) set(K_DEV, dev); set(K_KEY, r.key || key); set(K_CHK, String(Date.now())); }
+        unlock(canStore ? '' : 'Private Browsing is on: your key and progress will not be saved. Tap to dismiss.');
+      } else {
+        say(MSG[(r && r.code) || 'upstream'] || MSG.upstream, true);
+      }
+    });
+  }
+  btn.addEventListener('click', submit);
+  // Opened from the Gift page: key arrives as #k=KEY. Fill it, remove it from the address bar, unlock.
+  try {
+    var hm = /[#&]k=([^&]+)/.exec(window.location.hash || '');
+    if (hm) {
+      inp.value = decodeURIComponent(hm[1]);
+      try { window.history.replaceState(null, '', window.location.pathname + window.location.search); } catch (e) {}
+      setTimeout(submit, 60);
+    }
+  } catch (e) {}
+  inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); submit(); } });
+})();
+</script>
+<!-- WJ-GATE:END -->
+
 
 <div class="pin-gate" id="pinGate">
   <div class="pin-card">
-    <div class="pin-icon">✨</div>
-    <h2>The Golden Hour Premium ✓</h2>
-    <p style="color:var(--ink-text-dim); font-size:12px; margin:8px 0 14px;">Enter your access password</p>
-    <input type="password" id="pinInput" placeholder="Enter password" style="font-size:14px;">
-    <button id="pinBtn">Unlock Premium Access</button>
+    <div class="pin-icon">⚓</div>
+    <h2>Enter PIN to open</h2>
+    <input type="password" id="pinInput" maxlength="4" inputmode="numeric" placeholder="••••">
+    <button id="pinBtn">Unlock</button>
     <div class="pin-error" id="pinError"></div>
   </div>
 </div>
@@ -294,12 +438,12 @@
     </div>
   </div>
 
-  <div class="brand-footer">The Golden Hour Premium ✓ | Full access unlocked · Made by Theodor in loving memory</div>
+  <div class="brand-footer">WJSACLH @2026 · in loving memory</div>
 </div>
 
 <script>
 (function(){
-  const APP_PIN = 'TGH2026A'; // Will be provided after purchase
+  const APP_PIN = '__unused__';
   const pinGate = document.getElementById('pinGate');
   const appContent = document.getElementById('appContent');
   const pinInput = document.getElementById('pinInput');
