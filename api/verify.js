@@ -1,7 +1,7 @@
 'use strict';
 var API = 'https://api.gumroad.com/v2/licenses/verify';
 
-var CONFIG = { PRODUCT_IDS: 'JBxm61TbS3NKHbz_z_ipiw==:15', TEST_KEYS: 'GIFT-TEST-7Q2K' };
+var CONFIG = { PRODUCT_IDS: 'JBxm61TbS3NKHbz_z_ipiw==:15', TEST_KEYS: '' };
 
 function send(res, status, obj) {
   res.statusCode = status;
